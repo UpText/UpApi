@@ -1,0 +1,36 @@
+@UpApi_HostAddress = http://localhost:5092
+
+GET {{UpApi_HostAddress}}/ping
+Accept: text/plain
+
+###
+
+POST {{UpApi_HostAddress}}/ping
+Accept: text/plain
+
+###
+
+GET {{UpApi_HostAddress}}/time
+Accept: application/json
+
+###
+
+GET {{UpApi_HostAddress}}/swa/images/northwind/Categories/1
+Accept: image/png
+
+###
+
+GET {{UpApi_HostAddress}}/swa/images/northwind/Categories/1?raw=true
+Accept: application/octet-stream
+
+###
+
+GET {{UpApi_HostAddress}}/docs/northwind
+Accept: text/html
+
+###
+
+GET {{UpApi_HostAddress}}/swa/northwind/Categories
+Accept: application/json
+
+###

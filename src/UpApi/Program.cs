@@ -3,6 +3,7 @@ using UpApi.Configuration;
 using UpApi.Services;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using Microsoft.Extensions.Options;
 using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 
@@ -48,16 +49,24 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 builder.Services.AddMemoryCache();
+builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.SectionName));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LocalFrontend", policy =>
     {
+        var allowedOrigins = builder.Configuration
+            .GetSection(CorsOptions.SectionName)
+            .Get<CorsOptions>()?
+            .AllowedOrigins
+            .Where(origin => !string.IsNullOrWhiteSpace(origin))
+            .ToArray() ?? [];
+
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins);
+        }
+
         policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "https://localhost:5173",
-                "http://127.0.0.1:5173",
-                "https://127.0.0.1:5173")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .WithExposedHeaders("Content-Range");
@@ -83,12 +92,15 @@ await app.Services.GetRequiredService<ISqlLog>().EnsureTableAsync();
 
 app.MapOpenApi("/{documentName}.json");
 
+var corsOptions = app.Services.GetRequiredService<IOptions<CorsOptions>>().Value;
+var hasConfiguredCorsOrigins = corsOptions.AllowedOrigins.Any(origin => !string.IsNullOrWhiteSpace(origin));
+
 if (!isDevelopment)
 {
     app.UseHttpsRedirection();
 }
 
-if (isDevelopment)
+if (hasConfiguredCorsOrigins)
 {
     app.UseCors("LocalFrontend");
 }

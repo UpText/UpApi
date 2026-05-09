@@ -78,10 +78,6 @@ builder.Services.Configure<SqlLogOptions>(options =>
 {
     builder.Configuration.GetSection(SqlLogOptions.SectionName).Bind(options);
     options.ConnectionString = options.ConnectionString.Trim();
-    if (string.IsNullOrWhiteSpace(options.ConnectionString))
-    {
-        options.ConnectionString = builder.Configuration["SqlServerLogDb"]?.Trim() ?? string.Empty;
-    }
 });
 builder.Services.AddSingleton<IServiceConfigResolver, ServiceConfigResolver>();
 builder.Services.AddSingleton<ISqlWebApiExecutor, SqlWebApiExecutor>();

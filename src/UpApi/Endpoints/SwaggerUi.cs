@@ -24,11 +24,11 @@ public static class SwaggerUi
             ? DefaultSwaggerUrl
             : $"/swa/{Uri.EscapeDataString(service)}/swagger.json";
         var pageTitle = string.IsNullOrWhiteSpace(service)
-            ? "Swagger UI"
-            : $"Swagger UI - {WebUtility.HtmlEncode(service)}";
+            ? "UpApi Swagger"
+            : $"UpApi Swagger - {WebUtility.HtmlEncode(service)}";
         var headerText = string.IsNullOrWhiteSpace(service)
-            ? $"Swagger UI loading {WebUtility.HtmlEncode(swaggerUrl)}"
-            : $"Swagger UI for <code>{WebUtility.HtmlEncode(service)}</code> loading <code>{WebUtility.HtmlEncode(swaggerUrl)}</code>";
+            ? $"Swagger loading <code>{WebUtility.HtmlEncode(swaggerUrl)}</code>"
+            : $"Swagger for <code>{WebUtility.HtmlEncode(service)}</code> loading <code>{WebUtility.HtmlEncode(swaggerUrl)}</code>";
 
         return $$"""
 <!doctype html>
@@ -47,6 +47,25 @@ public static class SwaggerUi
       border-bottom: 1px solid #ddd4c8;
       background: #f3ecdf;
       font-family: system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .topbar-brand {
+      font-size: 1.55rem;
+      line-height: 1;
+      font-weight: 800;
+      color: #4d2d14;
+      text-decoration: none;
+      letter-spacing: 0.01em;
+    }
+    .topbar-brand:hover {
+      text-decoration: underline;
+    }
+    .topbar-text {
+      font-size: 1rem;
+      color: #5c4636;
     }
     .topbar code {
       padding: 2px 6px;
@@ -57,7 +76,8 @@ public static class SwaggerUi
 </head>
 <body>
   <div class="topbar">
-    {{headerText}}
+    <a class="topbar-brand" href="/">UpApi</a>
+    <div class="topbar-text">{{headerText}}</div>
   </div>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" crossorigin></script>

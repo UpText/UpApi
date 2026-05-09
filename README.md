@@ -48,7 +48,7 @@ Example:
   "Services": {
     "api": {
       "SqlSchema": "api",
-      "SqlConnectionString": "Server=localhost,1433;Initial Catalog=MyDb;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;TrustServerCertificate=True;"
+      "SqlConnectionString": "Server=localhost,1433;Initial Catalog=MyDb;User ID=upservice;Password=VerySecret!321;Encrypt=False;TrustServerCertificate=True;"
     }
   }
 }
@@ -82,10 +82,13 @@ Minimal example:
   "JWT_ISSUER": "UpApi",
   "JWT_AUDIENCE": "UpApiClient",
   "JWT_HOURS": "8",
+  "Cors": {
+    "AllowedOrigins": []
+  },
   "Services": {
     "api": {
       "SqlSchema": "api",
-      "SqlConnectionString": "Server=localhost,1433;Initial Catalog=MyDb;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;TrustServerCertificate=True;"
+      "SqlConnectionString": "Server=localhost,1433;Initial Catalog=MyDb;User ID=upservice;Password=VerySecret!321;Encrypt=False;TrustServerCertificate=True;"
     }
   }
 }
@@ -97,7 +100,105 @@ Recommended:
 - use environment variables in production
 - keep one SQL schema per API service
 
-### 2. Create stored procedures
+### CORS configuration
+
+CORS is now fully configuration-driven.
+
+Set allowed origins in:
+
+- [`src/UpApi/appsettings.Development.json`](/Users/ole/UpText/Repos/UpApi/src/UpApi/appsettings.Development.json) for local development
+- [`src/UpApi/appsettings.json`](/Users/ole/UpText/Repos/UpApi/src/UpApi/appsettings.json) or environment variables for shared environments and containers
+
+Example:
+
+```json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://app.example.com",
+      "https://admin.example.com"
+    ]
+  }
+}
+```
+
+If `Cors:AllowedOrigins` is empty, `UpApi` does not send CORS allow headers, so cross-origin browser requests are not allowed.
+
+### SQL logging
+
+`UpApi` can write one row per API execution to SQL Server. This is useful when you want a simple audit trail for requests, status codes, execution time, generated SQL exec strings, request bodies, response bodies, and unexpected errors.
+
+Configure it with a `SqlLog` section:
+
+```json
+{
+  "SqlLog": {
+    "ConnectionString": "Server=localhost,1433;Initial Catalog=MyDb;User ID=upservice;Password=VerySecret!321;Encrypt=False;TrustServerCertificate=True;",
+    "Schema": "api",
+    "TableName": "log"
+  }
+}
+```
+
+Notes:
+
+- `ConnectionString` is optional if `SqlServerLogDb` is set instead
+- `Schema` defaults to `dbo`, but `api` is recommended so the log table stays with the rest of the service objects
+- `TableName` defaults to `log`
+- the schema and table name must be simple SQL identifiers using letters, numbers, or `_`
+
+For local development, `UpApi` can create the log table automatically at startup if it does not already exist.
+
+For production, it is better to have `dbo` pre-create `api.log` and grant only `INSERT` to `upservice`. That keeps the runtime account from needing table-creation permissions.
+
+Recommended setup:
+
+```sql
+CREATE TABLE [api].[log](
+    [Id] [int] IDENTITY(1,1) NOT NULL,
+    [ApiName] [nvarchar](max) NULL,
+    [SwaServer] [nvarchar](max) NULL,
+    [MsUsed] [int] NULL,
+    [TimeStamp] [datetime] DEFAULT GETDATE(),
+    [ReturnValue] [int] NULL,
+    [RequestBody] [nvarchar](max) NULL,
+    [ReturnBody] [nvarchar](max) NULL,
+    [ExecString] [nvarchar](max) NULL,
+    [jwt] [nvarchar](max) NULL,
+    [UnexpectedError] [nvarchar](max) NULL,
+    CONSTRAINT [PK_api_log] PRIMARY KEY CLUSTERED ([Id] ASC)
+);
+
+GRANT INSERT ON [api].[log] TO upservice;
+```
+
+Typical uses:
+
+- trace API calls during development
+- inspect request and response payloads when debugging procedure behavior
+- monitor status codes and execution times
+- capture unexpected SQL or application errors for later review
+
+If logging is enabled, every executed endpoint writes a row to the configured log table.
+
+### 2. Create the SQL service user
+
+`UpApi` only needs permission to connect to the database and execute stored procedures in the configured schema. Using a dedicated service login instead of `sa` keeps local setup closer to production and limits the blast radius if the API credentials are exposed.
+
+Run this in SQL Server before starting the API:
+
+```sql
+CREATE LOGIN upservice WITH PASSWORD = 'VerySecret!321';
+CREATE SCHEMA api AUTHORIZATION dbo;
+CREATE USER upservice FOR LOGIN upservice;
+GRANT CONNECT TO upservice;
+GRANT EXECUTE ON SCHEMA::[api] TO upservice;
+GRANT INSERT ON [api].[log] TO upservice;
+```
+
+This matches the example connection string above and gives `UpApi` access to execute procedures in the `api` schema and write to `api.log` without broader database permissions.
+
+### 3. Create stored procedures
 
 Create your procedures in SQL Server under the configured schema, for example:
 
@@ -107,7 +208,7 @@ Create your procedures in SQL Server under the configured schema, for example:
 - `api.Customers_delete`
 - `api.Customers_openapi` optional, for richer docs
 
-### 3. Run from source
+### 4. Run from source
 
 ```bash
 dotnet run --project /Users/ole/UpText/Repos/UpApi/src/UpApi/UpApi.csproj
@@ -126,7 +227,7 @@ Useful built-in routes:
 - `/swagger.json`
 - `/swa/api/swagger.json`
 
-### 4. Run as a container
+### 5. Run as a container
 
 Build manually:
 
@@ -144,8 +245,10 @@ docker run --rm \
   -e JWT_ISSUER=UpApi \
   -e JWT_AUDIENCE=UpApiClient \
   -e JWT_HOURS=8 \
+  -e Cors__AllowedOrigins__0=https://app.example.com \
+  -e Cors__AllowedOrigins__1=https://admin.example.com \
   -e Services__api__SqlSchema=api \
-  -e Services__api__SqlConnectionString="Server=host.docker.internal,1433;Initial Catalog=MyDb;User ID=sa;Password=YourStrongPassword123!;Encrypt=False;TrustServerCertificate=True;" \
+  -e Services__api__SqlConnectionString="Server=host.docker.internal,1433;Initial Catalog=MyDb;User ID=upservice;Password=VerySecret!321;Encrypt=False;TrustServerCertificate=True;" \
   upapi
 ```
 

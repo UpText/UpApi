@@ -18,3 +18,6 @@
 *.DotSettings.user
 riderModule.iml
 _ReSharper.Caches/
+
+# Local development config
+src/UpApi/appsettings.Development.json

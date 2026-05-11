@@ -389,25 +389,16 @@ BEGIN
         WHEN @last_row IS NULL OR @last_row < @Offset THEN 2147483647
         ELSE (@last_row - @Offset) + 1
     END;
-
-    ;WITH Filtered AS
-    (
-        SELECT
-            Id,
-            Name,
-            Email,
-            City,
-            CreatedAt
-        FROM dbo.customers
-        WHERE (@IdInt IS NULL OR Id = @IdInt)
-          AND (
-                @filter IS NULL
-                OR Name LIKE '%' + @filter + '%'
-                OR Email LIKE '%' + @filter + '%'
-                OR City LIKE '%' + @filter + '%'
-              )
-    )
-    SELECT @total_rows = COUNT(*) FROM Filtered;
+    
+    SELECT @total_rows = COUNT(*)
+    FROM dbo.customers
+    WHERE (@IdInt IS NULL OR Id = @IdInt)
+      AND (
+            @filter IS NULL
+            OR Name LIKE '%' + @filter + '%'
+            OR Email LIKE '%' + @filter + '%'
+            OR City LIKE '%' + @filter + '%'
+          );
 
     SELECT
         Id,
@@ -415,7 +406,14 @@ BEGIN
         Email,
         City,
         CreatedAt
-    FROM Filtered
+    FROM dbo.customers
+    WHERE (@IdInt IS NULL OR Id = @IdInt)
+      AND (
+            @filter IS NULL
+            OR Name LIKE '%' + @filter + '%'
+            OR Email LIKE '%' + @filter + '%'
+            OR City LIKE '%' + @filter + '%'
+          )
     ORDER BY
         CASE WHEN @SortField = 'name' AND @SortOrder = 'ASC' THEN Name END ASC,
         CASE WHEN @SortField = 'name' AND @SortOrder = 'DESC' THEN Name END DESC,

@@ -4,7 +4,7 @@
 
 You define your API in SQL, not in controllers:
 
-- Create stored procedures like `Customers_get`, `Customers_post`, `Customers_put`, and `Customers_delete`
+- Create stored procedures like `customers_get`, `customers_post`, `customers_put`, and `customers_delete`
 - Point `UpApi` at a SQL Server database and schema
 - Run the app from source or as a container
 - Get REST endpoints, JWT protection, OpenAPI, and Swagger UI automatically
@@ -15,9 +15,9 @@ It is built for teams that want a simple SQL-first API layer with very little mo
 
 - SQL-first REST API generation from stored procedures
 - SQL Server support
-- No C# endpoint code required for each resource
-- Run from source with `dotnet run`
+- All resources are defined in SQL
 - Run in Docker as a container
+- Run from source with `dotnet run`
 - Automatic OpenAPI generation per service
 - Built-in Swagger UI
 - JWT token creation for login endpoints
@@ -30,13 +30,13 @@ It is built for teams that want a simple SQL-first API layer with very little mo
 
 `UpApi` maps HTTP verbs to stored procedure names:
 
-- `GET /swa/{service}/customers` -> `[schema].[customers_get]`
-- `GET /swa/{service}/customers/1` -> `[schema].[customers_get] @id = 1`
-- `POST /swa/{service}/customers` -> `[schema].[customers_post]`
-- `PUT /swa/{service}/customers/1` -> `[schema].[customers_put] @id = 1`
-- `DELETE /swa/{service}/customers/1` -> `[schema].[customers_delete] @id = 1`
+- `GET /swa/api/customers` -> `api.customers_get`
+- `GET /swa/api/customers/1` -> `api.customers_get @id = 1`
+- `POST /swa/api/customers` -> `api.customers_post`
+- `PUT /swa/api/customers/1` -> `api.customers_put @id = 1`
+- `DELETE /swa/api/customers/1` -> `api.customers_delete @id = 1`
 
-The `{service}` part comes from configuration. Each service points to:
+The `api` part part of the request refers to a service definition in the configuration. Each service points to:
 
 - a SQL connection string
 - a SQL schema that contains the API stored procedures
@@ -54,11 +54,13 @@ Example:
 }
 ```
 
+Thus many api's can be hosted by a single container. Also the service user should only have exec permission on the api schema. 
+
 ## Requirements
 
 - SQL Server
-- .NET 10 SDK to run from source
 - Docker, if you want to run the container image
+- .NET 10 SDK to run from source
 
 ## Project Layout
 
@@ -202,11 +204,11 @@ This matches the example connection string above and gives `UpApi` access to exe
 
 Create your procedures in SQL Server under the configured schema, for example:
 
-- `api.Customers_get`
-- `api.Customers_post`
-- `api.Customers_put`
-- `api.Customers_delete`
-- `api.Customers_openapi` optional, for richer docs
+- `api.customers_get`
+- `api.customers_post`
+- `api.customers_put`
+- `api.customers_delete`
+- `api.customers_openapi` optional, for richer docs
 
 ### 4. Run from source
 
@@ -282,132 +284,353 @@ customers_delete
 
 The configured SQL schema is prepended automatically, for example `api.customers_get`.
 
-## Simple CRUD Example
+## Complete CRUD Demo
 
-### Table
+This demo is written for a DBA working in SQL Server Management Studio (SSMS). At the end, you will have:
+
+- a new SQL Server database
+- an `api` schema that holds the REST-facing stored procedures
+- an `upservice` login and user with minimal permissions
+- a `dbo.customers` table with demo data
+- CRUD stored procedures for `Customer`
+- an `UpApi` container running from Docker Hub
+
+After the container starts, the first URL to try is:
+
+- [http://localhost:5092/swa/api/customers](http://localhost:5092/swa/api/customers)
+
+Then open Swagger UI for the same demo service:
+
+- [http://localhost:5092/docs/api](http://localhost:5092/docs/api)
+
+The generated OpenAPI document for the demo service is here:
+
+- [http://localhost:5092/swa/api/swagger.json](http://localhost:5092/swa/api/swagger.json)
+
+### 1. Create the demo database in SSMS
+
+Open a new query window in SSMS as a sufficiently privileged login such as `sa`, then run the full script below. It creates everything needed for the demo in one go.
 
 ```sql
-CREATE TABLE dbo.Customers
+USE master;
+GO
+
+IF DB_ID('UpApiDemo') IS NULL
+BEGIN
+    CREATE DATABASE UpApiDemo;
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'upservice')
+BEGIN
+    CREATE LOGIN upservice WITH PASSWORD = 'VerySecret!321';
+END;
+GO
+
+USE UpApiDemo;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'api')
+BEGIN
+    EXEC('CREATE SCHEMA api AUTHORIZATION dbo;');
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'upservice')
+BEGIN
+    CREATE USER upservice FOR LOGIN upservice;
+END;
+GO
+
+GRANT CONNECT TO upservice;
+GRANT EXECUTE ON SCHEMA::[api] TO upservice;
+GO
+
+IF OBJECT_ID('dbo.customers', 'U') IS NOT NULL
+BEGIN
+    DROP TABLE dbo.customers;
+END;
+GO
+
+CREATE TABLE dbo.customers
 (
     Id int IDENTITY(1,1) NOT NULL PRIMARY KEY,
     Name nvarchar(100) NOT NULL,
-    Email nvarchar(200) NULL
+    Email nvarchar(200) NULL,
+    City nvarchar(100) NULL,
+    CreatedAt datetime2 NOT NULL CONSTRAINT DF_customers_CreatedAt DEFAULT SYSUTCDATETIME()
 );
 GO
-```
 
-### GET
-
-```sql
-CREATE OR ALTER PROCEDURE api.Customers_get
-    @Id varchar(max) = NULL
-AS
-SELECT
-    Id,
-    Name,
-    Email
-FROM dbo.Customers
-WHERE @Id IS NULL OR Id = TRY_CAST(@Id AS int)
-ORDER BY Id;
+INSERT INTO dbo.customers (Name, Email, City)
+VALUES
+    ('Ada Lovelace', 'ada@example.com', 'London'),
+    ('Grace Hopper', 'grace@example.com', 'New York'),
+    ('Linus Torvalds', 'linus@example.com', 'Helsinki');
 GO
-```
 
-### POST
+CREATE OR ALTER PROCEDURE api.customers_get
+    @Id varchar(max) = NULL,
+    @first_row int = NULL,
+    @last_row int = NULL,
+    @sort_field nvarchar(128) = NULL,
+    @sort_order nvarchar(4) = NULL,
+    @filter nvarchar(max) = NULL,
+    @total_rows int OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
 
-```sql
-CREATE OR ALTER PROCEDURE api.Customers_post
+    DECLARE @IdInt int = TRY_CAST(@Id AS int);
+    DECLARE @SortField nvarchar(128) = LOWER(COALESCE(@sort_field, 'id'));
+    DECLARE @SortOrder nvarchar(4) = UPPER(COALESCE(@sort_order, 'ASC'));
+    DECLARE @Offset int = CASE WHEN @first_row IS NULL OR @first_row < 0 THEN 0 ELSE @first_row END;
+    DECLARE @Fetch int = CASE
+        WHEN @last_row IS NULL OR @last_row < @Offset THEN 2147483647
+        ELSE (@last_row - @Offset) + 1
+    END;
+
+    ;WITH Filtered AS
+    (
+        SELECT
+            Id,
+            Name,
+            Email,
+            City,
+            CreatedAt
+        FROM dbo.customers
+        WHERE (@IdInt IS NULL OR Id = @IdInt)
+          AND (
+                @filter IS NULL
+                OR Name LIKE '%' + @filter + '%'
+                OR Email LIKE '%' + @filter + '%'
+                OR City LIKE '%' + @filter + '%'
+              )
+    )
+    SELECT @total_rows = COUNT(*) FROM Filtered;
+
+    SELECT
+        Id,
+        Name,
+        Email,
+        City,
+        CreatedAt
+    FROM Filtered
+    ORDER BY
+        CASE WHEN @SortField = 'name' AND @SortOrder = 'ASC' THEN Name END ASC,
+        CASE WHEN @SortField = 'name' AND @SortOrder = 'DESC' THEN Name END DESC,
+        CASE WHEN @SortField = 'email' AND @SortOrder = 'ASC' THEN Email END ASC,
+        CASE WHEN @SortField = 'email' AND @SortOrder = 'DESC' THEN Email END DESC,
+        CASE WHEN @SortField = 'city' AND @SortOrder = 'ASC' THEN City END ASC,
+        CASE WHEN @SortField = 'city' AND @SortOrder = 'DESC' THEN City END DESC,
+        CASE WHEN @SortField = 'createdat' AND @SortOrder = 'ASC' THEN CreatedAt END ASC,
+        CASE WHEN @SortField = 'createdat' AND @SortOrder = 'DESC' THEN CreatedAt END DESC,
+        CASE WHEN @SortField = 'id' AND @SortOrder = 'DESC' THEN Id END DESC,
+        Id ASC
+    OFFSET @Offset ROWS
+    FETCH NEXT @Fetch ROWS ONLY;
+
+    RETURN 200;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE api.customers_post
     @Name nvarchar(100),
-    @Email nvarchar(200) = NULL
+    @Email nvarchar(200) = NULL,
+    @City nvarchar(100) = NULL
 AS
-INSERT INTO dbo.Customers (Name, Email)
-VALUES (@Name, @Email);
+BEGIN
+    SET NOCOUNT ON;
 
-DECLARE @NewId int = SCOPE_IDENTITY();
+    INSERT INTO dbo.customers (Name, Email, City)
+    VALUES (@Name, @Email, @City);
 
-EXEC api.Customers_get @Id = @NewId;
-RETURN 200;
+    DECLARE @NewId int = SCOPE_IDENTITY();
+
+    EXEC api.customers_get @Id = @NewId;
+    RETURN 200;
+END;
 GO
-```
 
-### PUT
-
-```sql
-CREATE OR ALTER PROCEDURE api.Customers_put
+CREATE OR ALTER PROCEDURE api.customers_put
     @Id varchar(max),
     @Name nvarchar(100) = NULL,
-    @Email nvarchar(200) = NULL
+    @Email nvarchar(200) = NULL,
+    @City nvarchar(100) = NULL
 AS
-IF NOT EXISTS (SELECT 1 FROM dbo.Customers WHERE Id = TRY_CAST(@Id AS int))
 BEGIN
-    RAISERROR('Unknown customer', 1, 1);
-    RETURN 404;
+    SET NOCOUNT ON;
+
+    DECLARE @IdInt int = TRY_CAST(@Id AS int);
+
+    IF @IdInt IS NULL OR NOT EXISTS (SELECT 1 FROM dbo.customers WHERE Id = @IdInt)
+    BEGIN
+        RAISERROR('Unknown customer', 1, 1);
+        RETURN 404;
+    END;
+
+    UPDATE dbo.customers
+    SET
+        Name = COALESCE(@Name, Name),
+        Email = COALESCE(@Email, Email),
+        City = COALESCE(@City, City)
+    WHERE Id = @IdInt;
+
+    EXEC api.customers_get @Id = @IdInt;
+    RETURN 200;
 END;
-
-UPDATE dbo.Customers
-SET
-    Name = COALESCE(@Name, Name),
-    Email = COALESCE(@Email, Email)
-WHERE Id = TRY_CAST(@Id AS int);
-
-EXEC api.Customers_get @Id = @Id;
-RETURN 200;
 GO
-```
 
-### DELETE
-
-```sql
-CREATE OR ALTER PROCEDURE api.Customers_delete
+CREATE OR ALTER PROCEDURE api.customers_delete
     @Id varchar(max)
 AS
-IF NOT EXISTS (SELECT 1 FROM dbo.Customers WHERE Id = TRY_CAST(@Id AS int))
 BEGIN
-    RAISERROR('Unknown customer', 1, 1);
-    RETURN 404;
+    SET NOCOUNT ON;
+
+    DECLARE @IdInt int = TRY_CAST(@Id AS int);
+
+    IF @IdInt IS NULL OR NOT EXISTS (SELECT 1 FROM dbo.customers WHERE Id = @IdInt)
+    BEGIN
+        RAISERROR('Unknown customer', 1, 1);
+        RETURN 404;
+    END;
+
+    DELETE FROM dbo.customers
+    WHERE Id = @IdInt;
+
+    RETURN 200;
 END;
+GO
 
-DELETE FROM dbo.Customers
-WHERE Id = TRY_CAST(@Id AS int);
+CREATE OR ALTER PROCEDURE api.customers_openapi
+AS
+BEGIN
+    SET NOCOUNT ON;
 
-RETURN 200;
+    SELECT
+        operation,
+        class,
+        name,
+        property,
+        value
+    FROM (VALUES
+        ('get',    'operation', '',           'summary',     'Get one customer or a paged list of customers'),
+        ('post',   'operation', '',           'summary',     'Create a customer'),
+        ('put',    'operation', '',           'summary',     'Update a customer'),
+        ('delete', 'operation', '',           'summary',     'Delete a customer'),
+        ('*',      'parameter', 'Id',         'description', 'Customer id from the route'),
+        ('get',    'parameter', 'filter',     'description', 'Searches Name, Email, and City'),
+        ('get',    'parameter', 'sort',       'description', 'Example: [\"Name\",\"ASC\"]'),
+        ('get',    'parameter', 'range',      'description', 'Example: [0,24] for server-side paging'),
+        ('*',      'response',  '404',        'description', 'Customer not found')
+    ) AS Data(operation, class, name, property, value);
+END;
 GO
 ```
 
-### Test the CRUD API
+### 2. Verify the database objects in SSMS
 
-List customers:
+You should now see:
 
-```bash
-curl http://localhost:5092/swa/api/customers
+- database `UpApiDemo`
+- schema `api`
+- table `dbo.customers`
+- procedures `api.customers_get`, `api.customers_post`, `api.customers_put`, `api.customers_delete`, and `api.customers_openapi`
+- database user `upservice`
+
+You can also validate the seed data directly in SSMS:
+
+```sql
+USE UpApiDemo;
+GO
+
+SELECT * FROM dbo.customers ORDER BY Id;
+GO
 ```
 
-Get one:
+### 3. Start the container from Docker Hub
+
+Run `UpApi` as a container with a minimal configuration that only defines the `api` service:
 
 ```bash
-curl http://localhost:5092/swa/api/customers/1
+docker run --rm \
+  -p 5092:8080 \
+  -e ASPNETCORE_URLS=http://+:8080 \
+  -e JWT_SECRET=replace-with-a-long-random-secret \
+  -e JWT_ISSUER=UpApi \
+  -e JWT_AUDIENCE=UpApiClient \
+  -e JWT_HOURS=8 \
+  -e Services__api__SqlSchema=api \
+  -e Services__api__SqlConnectionString="Server=host.docker.internal,1433;Initial Catalog=UpApiDemo;User ID=upservice;Password=VerySecret!321;Encrypt=False;TrustServerCertificate=True;" \
+  uptext/upapi
 ```
 
-Create:
+Notes:
+
+- `host.docker.internal` lets the container connect back to SQL Server running on your machine
+- if SQL Server is on another host, replace `host.docker.internal` with that server name
+- only one service is configured here: `api`
+
+### 4. Open the demo endpoints
+
+First, list the customers:
+
+- [http://localhost:5092/swa/api/customers](http://localhost:5092/swa/api/customers)
+
+That endpoint should return the seed rows from `dbo.customers`.
+
+Then open Swagger UI for the demo service:
+
+- [http://localhost:5092/docs/api](http://localhost:5092/docs/api)
+
+Swagger UI lets you inspect and execute the demo CRUD operations against:
+
+- `GET /swa/api/customers`
+- `GET /swa/api/customers/{id}`
+- `POST /swa/api/customers`
+- `PUT /swa/api/customers/{id}`
+- `DELETE /swa/api/customers/{id}`
+
+The service-specific OpenAPI document is also available here:
+
+- [http://localhost:5092/swa/api/swagger.json](http://localhost:5092/swa/api/swagger.json)
+
+### 5. Optional command-line tests
+
+Create a customer:
 
 ```bash
 curl -X POST http://localhost:5092/swa/api/customers \
   -H "Content-Type: application/json" \
-  -d '{"name":"Ada Lovelace","email":"ada@example.com"}'
+  -d '{"name":"Margaret Hamilton","email":"margaret@example.com","city":"Boston"}'
 ```
 
-Update:
+Update customer `1`:
 
 ```bash
 curl -X PUT http://localhost:5092/swa/api/customers/1 \
   -H "Content-Type: application/json" \
-  -d '{"email":"ada@uptext.example"}'
+  -d '{"city":"Oslo"}'
 ```
 
-Delete:
+Delete customer `3`:
 
 ```bash
-curl -X DELETE http://localhost:5092/swa/api/customers/1
+curl -X DELETE http://localhost:5092/swa/api/customers/3
 ```
+
+### Summary
+
+You have created a REST API for CRUD operations on a `Customer` resource with SQL Server objects that a DBA can own and maintain.
+
+You can extend the demo with:
+
+- authentication by adding procedures such as `api.login_post` and protected parameters such as `@auth_userid`
+- server-side paging with `@first_row`, `@last_row`, and `@total_rows`
+- sorting with `@sort_field` and `@sort_order`
+- searching with `@filter`
+- SQL logging to an `api.log` table for request and response auditing
+- CORS configuration through `Cors:AllowedOrigins` or matching environment variables
 
 ## JWT Authentication
 
@@ -493,7 +716,7 @@ http://localhost:5092/swa/api/swagger.json
 You can enrich generated docs with a companion procedure:
 
 ```text
-api.Customers_openapi
+api.customers_openapi
 ```
 
 It returns rows describing summaries, descriptions, parameter descriptions, tags, and response descriptions.
@@ -501,7 +724,7 @@ It returns rows describing summaries, descriptions, parameter descriptions, tags
 Example:
 
 ```sql
-CREATE OR ALTER PROCEDURE api.Customers_openapi
+CREATE OR ALTER PROCEDURE api.customers_openapi
 AS
 SELECT
     operation,
@@ -510,12 +733,12 @@ SELECT
     property,
     value
 FROM (VALUES
-    ('*',      'parameter', 'Id',    'description', 'Customer id'),
+    ('*',      'parameter', 'Id',    'description', 'customer id'),
     ('get',    'operation', '',      'summary',     'Get one or many customers'),
     ('post',   'operation', '',      'summary',     'Create a customer'),
     ('put',    'operation', '',      'summary',     'Update a customer'),
     ('delete', 'operation', '',      'summary',     'Delete a customer'),
-    ('*',      'response',  '404',   'description', 'Customer not found')
+    ('*',      'response',  '404',   'description', 'customer not found')
 ) AS Data(operation, class, name, property, value);
 GO
 ```
@@ -534,7 +757,7 @@ Routes:
 Example:
 
 ```bash
-curl "http://localhost:5092/swa/api/sql-generator?Table-schema=dbo&Table=Customers&http-verb=all"
+curl "http://localhost:5092/swa/api/sql-generator?Table-schema=dbo&Table=customers&http-verb=all"
 ```
 
 Supported values for `http-verb`:

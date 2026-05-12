@@ -43,7 +43,7 @@ public static class Home
             "  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />",
             "  <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap\" rel=\"stylesheet\" />",
             $"  <link rel=\"icon\" href=\"data:image/svg+xml,{Uri.EscapeDataString(RenderFaviconSvg())}\" />",
-            "  <title>UpText API</title>",
+            "  <title>UpAPI</title>",
             "  <style>",
             "    :root { color-scheme: light; }",
             "    * { box-sizing: border-box; }",
@@ -79,7 +79,7 @@ public static class Home
             "      <section class=\"hero\">",
             "        <div>",
             "          <span class=\"eyebrow\">UpText Platform</span>",
-            "          <h1>UpText API</h1>",
+            "          <h1>UpAPI</h1>",
             "          <p class=\"lede\">SQL-backed endpoints, Swagger docs, JWT authentication.</p>",
             "        </div>",
             $"        {RenderBrandPanel()}",
@@ -88,7 +88,10 @@ public static class Home
             $"      <div class=\"links\">{swaggerLinks}</div>",
             "      <div class=\"section-title\">Utilities</div>",
             "      <div class=\"utility-row\">",
-            "        <a class=\"utility-link\" href=\"/ping\">Health</a>",
+            "        <a class=\"utility-link\" href=\"/ping\">Ping</a>",
+            "        <a class=\"utility-link\" href=\"/live\">Liveness</a>",
+            "        <a class=\"utility-link\" href=\"/health\">Readiness</a>",
+            "        <a class=\"utility-link\" href=\"/health/details\">Health Details</a>",
             "        <a class=\"utility-link\" href=\"/docs\">Core Swagger UI</a>",
             "      </div>",
             "    </div>",
@@ -100,7 +103,7 @@ public static class Home
     private static string RenderBrandPanel()
     {
         return $$"""
-        <div class="brand-panel" aria-label="UpText brand panel">
+        <div class="brand-panel" aria-label="UpAPI brand panel">
           <div class="brand-lockup">
             {{RenderBrandIcon()}}
             <div>
@@ -118,7 +121,7 @@ public static class Home
     private static string RenderBrandIcon()
     {
         return $$"""
-        <svg viewBox="0 0 48 48" role="img" aria-label="UpText icon" width="72" height="72">
+        <svg viewBox="0 0 48 48" role="img" aria-label="UpAPI icon" width="72" height="72">
           <rect x="3" y="3" width="42" height="42" rx="16" fill="{{BrandPrimary}}" />
           <path d="M14 29.5L24 12l10 17.5h-6L24 22l-4 7.5h-6Z" fill="{{BrandCyan}}" />
           <path d="M21.5 31h5v5h-5z" fill="{{BrandAmber}}" />

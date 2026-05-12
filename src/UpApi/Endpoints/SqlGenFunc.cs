@@ -29,6 +29,25 @@ public static partial class SqlGenFunc
             .Produces(StatusCodes.Status400BadRequest, contentType: "text/plain")
             .Produces(StatusCodes.Status500InternalServerError, contentType: "text/plain");
 
+        app.MapMethods("/{service}/sql-generator", ["OPTIONS"], () => Results.NoContent())
+            .ExcludeFromDescription();
+
+        app.MapGet("/{service}/sql-generator", HandleAsync)
+            .WithName("SqlGeneratorRootGet")
+            .WithTags("BuiltIn")
+            .WithSummary("Generate SQL stored procedure code for a service table")
+            .Produces(StatusCodes.Status200OK, contentType: "text/plain")
+            .Produces(StatusCodes.Status400BadRequest, contentType: "text/plain")
+            .Produces(StatusCodes.Status500InternalServerError, contentType: "text/plain");
+
+        app.MapPost("/{service}/sql-generator", HandleAsync)
+            .WithName("SqlGeneratorRootPost")
+            .WithTags("BuiltIn")
+            .WithSummary("Generate SQL stored procedure code for a service table")
+            .Produces(StatusCodes.Status200OK, contentType: "text/plain")
+            .Produces(StatusCodes.Status400BadRequest, contentType: "text/plain")
+            .Produces(StatusCodes.Status500InternalServerError, contentType: "text/plain");
+
         app.MapMethods("/swa/{service}/sql-generator", ["OPTIONS"], () => Results.NoContent())
             .ExcludeFromDescription();
 

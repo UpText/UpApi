@@ -10,14 +10,16 @@ internal static class JwtHelper
 {
     public static string? GetClaimValue(HttpRequest request, string name, IConfiguration configuration)
     {
-        var token = Parse(request, configuration);
-        if (token is null)
+        var validatedToken = Parse(request, configuration);
+        if (validatedToken is null)
         {
             return null;
         }
 
-        return token.Claims.FirstOrDefault(c => c.Type == $"https://uptext.com/{name}")?.Value
-            ?? token.Claims.FirstOrDefault(c => c.Type == name)?.Value;
+        var (principal, token) = validatedToken.Value;
+
+        return FindClaimValue(principal.Claims, name)
+            ?? FindClaimValue(token.Claims, name);
     }
 
     public static string? CreateToken(string jsonPayload, IReadOnlyDictionary<string, string> additionalClaims, IConfiguration configuration)
@@ -65,7 +67,7 @@ internal static class JwtHelper
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static JwtSecurityToken? Parse(HttpRequest request, IConfiguration configuration)
+    private static (ClaimsPrincipal Principal, JwtSecurityToken Token)? Parse(HttpRequest request, IConfiguration configuration)
     {
         var bearerToken = ReadBearerToken(request);
         if (string.IsNullOrWhiteSpace(bearerToken))
@@ -83,7 +85,44 @@ internal static class JwtHelper
             return null;
         }
 
-        return new JwtSecurityTokenHandler().ReadJwtToken(bearerToken);
+        return (principal, new JwtSecurityTokenHandler().ReadJwtToken(bearerToken));
+    }
+
+    private static string? FindClaimValue(IEnumerable<Claim> claims, string name)
+    {
+        var expectedNames = new[]
+        {
+            name,
+            $"https://uptext.com/{name}"
+        };
+
+        foreach (var expectedName in expectedNames)
+        {
+            var claim = claims.FirstOrDefault(c =>
+                string.Equals(c.Type, expectedName, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(claim?.Value))
+            {
+                return claim.Value;
+            }
+        }
+
+        foreach (var claim in claims)
+        {
+            var claimType = claim.Type;
+            var slashIndex = claimType.LastIndexOf('/');
+            if (slashIndex >= 0)
+            {
+                claimType = claimType[(slashIndex + 1)..];
+            }
+
+            if (string.Equals(claimType, name, StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(claim.Value))
+            {
+                return claim.Value;
+            }
+        }
+
+        return null;
     }
 
     private static ClaimsPrincipal? ValidateToken(string token, string issuer, string audience, string secretKey)

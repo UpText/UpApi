@@ -15,12 +15,12 @@ Accept: application/json
 
 ###
 
-GET {{UpApi_HostAddress}}/swa/images/northwind/Categories/1
+GET {{UpApi_HostAddress}}/images/northwind/Categories/1
 Accept: image/png
 
 ###
 
-GET {{UpApi_HostAddress}}/swa/images/northwind/Categories/1?raw=true
+GET {{UpApi_HostAddress}}/images/northwind/Categories/1?raw=true
 Accept: application/octet-stream
 
 ###
@@ -30,7 +30,7 @@ Accept: text/html
 
 ###
 
-GET {{UpApi_HostAddress}}/swa/northwind/Categories
+GET {{UpApi_HostAddress}}/northwind/Categories
 Accept: application/json
 
 ###

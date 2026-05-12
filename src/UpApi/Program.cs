@@ -18,6 +18,7 @@ builder.Services.AddOpenApi("swagger", options =>
     {
         var relativePath = context.Description.RelativePath;
         if (!string.Equals(relativePath, "SqlGenerator", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(relativePath, "{service}/sql-generator", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(relativePath, "swa/{service}/sql-generator", StringComparison.OrdinalIgnoreCase))
         {
             return Task.CompletedTask;
@@ -49,6 +50,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 builder.Services.AddMemoryCache();
+builder.Services.AddHealthChecks()
+    .AddCheck<ConfigurationHealthCheck>("configuration", tags: ["ready"])
+    .AddCheck<SqlServicesHealthCheck>("sql", tags: ["ready"]);
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.SectionName));
 builder.Services.AddCors(options =>
 {
@@ -102,6 +106,7 @@ if (hasConfiguredCorsOrigins)
 }
 
 app.MapPing();
+app.MapHealth();
 app.MapHome();
 app.MapServerTime();
 app.MapSqlGenFunc();

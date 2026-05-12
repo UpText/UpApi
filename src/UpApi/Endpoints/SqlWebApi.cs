@@ -6,6 +6,8 @@ public static class SqlWebApi
 {
     public static IEndpointRouteBuilder MapSqlWebApi(this IEndpointRouteBuilder app)
     {
+        MapRoute(app, "/{service}/{resource}", "SqlWebApiRoot");
+        MapRoute(app, "/{service}/{resource}/{id}", "SqlWebApiRootWithId");
         MapRoute(app, "/swa/{service}/{resource}", "SqlWebApi");
         MapRoute(app, "/swa/{service}/{resource}/{id}", "SqlWebApiWithId");
 

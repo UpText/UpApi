@@ -11,6 +11,16 @@ public static partial class SqlImageFunc
 {
     public static IEndpointRouteBuilder MapSqlImageFunc(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/images/{service}/{resource}/{id}", HandleAsync)
+            .WithName("SqlImageFuncRoot")
+            .WithTags("BuiltIn")
+            .WithSummary("Return an image from SQL storage")
+            .Produces(StatusCodes.Status200OK, contentType: "image/png")
+            .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
+            .Produces(StatusCodes.Status400BadRequest, contentType: "text/plain")
+            .Produces(StatusCodes.Status404NotFound, contentType: "text/plain")
+            .Produces(StatusCodes.Status500InternalServerError, contentType: "text/plain");
+
         app.MapGet("/swa/images/{service}/{resource}/{id}", HandleAsync)
             .WithName("SqlImageFunc")
             .WithTags("BuiltIn")

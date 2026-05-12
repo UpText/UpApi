@@ -11,6 +11,12 @@ public static class ServiceOpenApi
 {
     public static IEndpointRouteBuilder MapServiceOpenApi(this IEndpointRouteBuilder app)
     {
+        app.MapMethods("/{service}/swagger.json", ["GET", "POST", "OPTIONS"], HandleAsync)
+            .WithName("ServiceOpenApiRoot")
+            .WithTags("OpenApi")
+            .WithSummary("Generate a service-specific OpenAPI document")
+            .ExcludeFromDescription();
+
         app.MapMethods("/swa/{service}/swagger.json", ["GET", "POST", "OPTIONS"], HandleAsync)
             .WithName("ServiceOpenApi")
             .WithTags("OpenApi")
@@ -596,7 +602,7 @@ public static class ServiceOpenApi
         var configuredBaseUrl = GetSetting(request.HttpContext.RequestServices, "OPENAPI_PUBLIC_BASEURL");
         if (!string.IsNullOrWhiteSpace(configuredBaseUrl))
         {
-            return $"{configuredBaseUrl.TrimEnd('/')}/swa/{Uri.EscapeDataString(service)}";
+            return $"{configuredBaseUrl.TrimEnd('/')}/{Uri.EscapeDataString(service)}";
         }
 
         var forwardedProto = GetFirstHeaderValue(request, "X-Forwarded-Proto", "X-Original-Proto");
@@ -628,7 +634,7 @@ public static class ServiceOpenApi
         }
 
         var pathBase = string.IsNullOrWhiteSpace(forwardedPrefix) ? string.Empty : "/" + forwardedPrefix.Trim('/');
-        builder.Path = $"{pathBase}/swa/{Uri.EscapeDataString(service)}".Replace("//", "/");
+        builder.Path = $"{pathBase}/{Uri.EscapeDataString(service)}".Replace("//", "/");
         builder.Query = string.Empty;
         builder.Fragment = string.Empty;
 

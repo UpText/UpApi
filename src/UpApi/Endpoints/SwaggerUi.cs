@@ -22,7 +22,7 @@ public static class SwaggerUi
     {
         var swaggerUrl = string.IsNullOrWhiteSpace(service)
             ? DefaultSwaggerUrl
-            : $"/swa/{Uri.EscapeDataString(service)}/swagger.json";
+            : $"/{Uri.EscapeDataString(service)}/swagger.json";
         var pageTitle = string.IsNullOrWhiteSpace(service)
             ? "UpApi Swagger"
             : $"UpApi Swagger - {WebUtility.HtmlEncode(service)}";

@@ -14,6 +14,11 @@ public static class SqlWebSiteDefinition
             .WithTags("BuiltIn")
             .WithSummary("Return JSON describing the SQL-backed site");
 
+        app.MapMethods("/{service}/site-definition", ["GET", "POST", "OPTIONS"], HandleAsync)
+            .WithName("SqlWebSiteDefinitionRoot")
+            .WithTags("BuiltIn")
+            .WithSummary("Return JSON describing the SQL-backed site");
+
         app.MapMethods("/swa/{service}/site-definition", ["GET", "POST", "OPTIONS"], HandleAsync)
             .WithName("SqlWebSiteDefinition")
             .WithTags("BuiltIn")

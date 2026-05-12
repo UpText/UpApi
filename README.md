@@ -30,11 +30,11 @@ It is built for teams that want a simple SQL-first API layer with very little mo
 
 `UpApi` maps HTTP verbs to stored procedure names:
 
-- `GET /swa/api/customers` -> `api.customers_get`
-- `GET /swa/api/customers/1` -> `api.customers_get @id = 1`
-- `POST /swa/api/customers` -> `api.customers_post`
-- `PUT /swa/api/customers/1` -> `api.customers_put @id = 1`
-- `DELETE /swa/api/customers/1` -> `api.customers_delete @id = 1`
+- `GET /api/customers` -> `api.customers_get`
+- `GET /api/customers/1` -> `api.customers_get @id = 1`
+- `POST /api/customers` -> `api.customers_post`
+- `PUT /api/customers/1` -> `api.customers_put @id = 1`
+- `DELETE /api/customers/1` -> `api.customers_delete @id = 1`
 
 The `api` part part of the request refers to a service definition in the configuration. Each service points to:
 
@@ -103,7 +103,7 @@ Useful built-in routes:
 - `/docs`
 - `/docs/api`
 - `/swagger.json`
-- `/swa/api/swagger.json`
+- `/api/swagger.json`
 
 ### 2. Configure a service
 
@@ -248,18 +248,18 @@ Create your procedures in SQL Server under the configured schema, for example:
 The main route is:
 
 ```text
-/swa/{service}/{resource}
-/swa/{service}/{resource}/{id}
+/{service}/{resource}
+/{service}/{resource}/{id}
 ```
 
 Examples:
 
 ```text
-GET    /swa/api/customers
-GET    /swa/api/customers/1
-POST   /swa/api/customers
-PUT    /swa/api/customers/1
-DELETE /swa/api/customers/1
+GET    /api/customers
+GET    /api/customers/1
+POST   /api/customers
+PUT    /api/customers/1
+DELETE /api/customers/1
 ```
 
 Stored procedure naming:
@@ -286,7 +286,7 @@ This demo is written for a DBA working in SQL Server Management Studio (SSMS). A
 
 After the container starts, the first URL to try is:
 
-- [http://localhost:5092/swa/api/customers](http://localhost:5092/swa/api/customers)
+- [http://localhost:5092/api/customers](http://localhost:5092/api/customers)
 
 Then open Swagger UI for the same demo service:
 
@@ -294,7 +294,7 @@ Then open Swagger UI for the same demo service:
 
 The generated OpenAPI document for the demo service is here:
 
-- [http://localhost:5092/swa/api/swagger.json](http://localhost:5092/swa/api/swagger.json)
+- [http://localhost:5092/api/swagger.json](http://localhost:5092/api/swagger.json)
 
 ### 1. Create the demo database in SSMS
 
@@ -562,7 +562,7 @@ Notes:
 
 First, list the customers:
 
-- [http://localhost:5092/swa/api/customers](http://localhost:5092/swa/api/customers)
+- [http://localhost:5092/api/customers](http://localhost:5092/api/customers)
 
 That endpoint should return the seed rows from `dbo.customers`.
 
@@ -572,22 +572,22 @@ Then open Swagger UI for the demo service:
 
 Swagger UI lets you inspect and execute the demo CRUD operations against:
 
-- `GET /swa/api/customers`
-- `GET /swa/api/customers/{id}`
-- `POST /swa/api/customers`
-- `PUT /swa/api/customers/{id}`
-- `DELETE /swa/api/customers/{id}`
+- `GET /api/customers`
+- `GET /api/customers/{id}`
+- `POST /api/customers`
+- `PUT /api/customers/{id}`
+- `DELETE /api/customers/{id}`
 
 The service-specific OpenAPI document is also available here:
 
-- [http://localhost:5092/swa/api/swagger.json](http://localhost:5092/swa/api/swagger.json)
+- [http://localhost:5092/api/swagger.json](http://localhost:5092/api/swagger.json)
 
 ### 5. Optional command-line tests
 
 Create a customer:
 
 ```bash
-curl -X POST http://localhost:5092/swa/api/customers \
+curl -X POST http://localhost:5092/api/customers \
   -H "Content-Type: application/json" \
   -d '{"name":"Margaret Hamilton","email":"margaret@example.com","city":"Boston"}'
 ```
@@ -595,7 +595,7 @@ curl -X POST http://localhost:5092/swa/api/customers \
 Update customer `1`:
 
 ```bash
-curl -X PUT http://localhost:5092/swa/api/customers/1 \
+curl -X PUT http://localhost:5092/api/customers/1 \
   -H "Content-Type: application/json" \
   -d '{"city":"Oslo"}'
 ```
@@ -603,7 +603,7 @@ curl -X PUT http://localhost:5092/swa/api/customers/1 \
 Delete customer `3`:
 
 ```bash
-curl -X DELETE http://localhost:5092/swa/api/customers/3
+curl -X DELETE http://localhost:5092/api/customers/3
 ```
 
 ### Summary
@@ -630,7 +630,7 @@ Two important conventions are used:
 If you create a procedure named `login_post`, `UpApi` can turn its result into a JWT response:
 
 ```text
-POST /swa/api/login
+POST /api/login
 ```
 
 If the procedure returns a row or JSON object with claims, the API responds with:
@@ -675,7 +675,7 @@ GO
 Call it:
 
 ```bash
-curl http://localhost:5092/swa/api/profile \
+curl http://localhost:5092/api/profile \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -686,7 +686,7 @@ curl http://localhost:5092/swa/api/profile \
 Built-in docs endpoints:
 
 - `/swagger.json` for the app-level OpenAPI document
-- `/swa/{service}/swagger.json` for service-specific SQL-generated OpenAPI
+- `/{service}/swagger.json` for service-specific SQL-generated OpenAPI
 - `/docs` for Swagger UI
 - `/docs/{service}` for a service Swagger UI page
 
@@ -695,7 +695,7 @@ Examples:
 ```text
 http://localhost:5092/docs
 http://localhost:5092/docs/api
-http://localhost:5092/swa/api/swagger.json
+http://localhost:5092/api/swagger.json
 ```
 
 ### Add better docs with `<resource>_openapi`
@@ -739,12 +739,12 @@ For the full shape, see [`src/UpApi/Docs/ServiceOpenApi.md`](/Users/ole/UpText/R
 Routes:
 
 - `/SqlGenerator`
-- `/swa/{service}/sql-generator`
+- `/{service}/sql-generator`
 
 Example:
 
 ```bash
-curl "http://localhost:5092/swa/api/sql-generator?Table-schema=dbo&Table=customers&http-verb=all"
+curl "http://localhost:5092/api/sql-generator?Table-schema=dbo&Table=customers&http-verb=all"
 ```
 
 Supported values for `http-verb`:
@@ -774,7 +774,7 @@ If your procedure supports these parameters, `UpApi` knows how to populate them:
 Example request:
 
 ```bash
-curl "http://localhost:5092/swa/api/customers?range=[0,24]&sort=[\"Name\",\"ASC\"]&filter=ada"
+curl "http://localhost:5092/api/customers?range=[0,24]&sort=[\"Name\",\"ASC\"]&filter=ada"
 ```
 
 For successful collection `GET` responses, `UpApi` also emits a `Content-Range` header.

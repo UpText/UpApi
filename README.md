@@ -6,7 +6,7 @@ You define your API in SQL, not in controllers:
 
 - Create stored procedures like `customers_get`, `customers_post`, `customers_put`, and `customers_delete`
 - Point `UpApi` at a SQL Server database and schema
-- Run the app from source or as a container
+- Run the app as a container from Docker Hub or from source
 - Get REST endpoints, JWT protection, OpenAPI, and Swagger UI automatically
 
 It is built for teams that want a simple SQL-first API layer with very little moving code.
@@ -16,7 +16,7 @@ It is built for teams that want a simple SQL-first API layer with very little mo
 - SQL-first REST API generation from stored procedures
 - SQL Server support
 - All resources are defined in SQL
-- Run in Docker as a container
+- Run from the `uptext/upapi` Docker image
 - Run from source with `dotnet run`
 - Automatic OpenAPI generation per service
 - Built-in Swagger UI
@@ -59,7 +59,7 @@ Thus many api's can be hosted by a single container. Also the service user shoul
 ## Requirements
 
 - SQL Server
-- Docker, if you want to run the container image
+- Docker for the default container-based setup
 - .NET 10 SDK to run from source
 
 ## Project Layout
@@ -72,11 +72,44 @@ Thus many api's can be hosted by a single container. Also the service user shoul
 
 ## Quick Start
 
-### 1. Configure a service
+### 1. Run the container from Docker Hub
 
-Update [`src/UpApi/appsettings.json`](/Users/ole/UpText/Repos/UpApi/src/UpApi/appsettings.json) or provide environment variables.
+The default way to run `UpApi` is the published Docker image:
 
-Minimal example:
+```bash
+docker run --rm \
+  -p 5092:8080 \
+  -e ASPNETCORE_URLS=http://+:8080 \
+  -e JWT_SECRET=replace-with-a-long-random-secret \
+  -e JWT_ISSUER=UpApi \
+  -e JWT_AUDIENCE=UpApiClient \
+  -e JWT_HOURS=8 \
+  -e Services__api__SqlSchema=api \
+  -e 'Services__api__SqlConnectionString=Server=host.docker.internal,1433;Initial Catalog=MyDb;User ID=upservice;Password=VerySecret!321;Encrypt=False;TrustServerCertificate=True;' \
+  uptext/upapi
+```
+
+Notes:
+
+- `host.docker.internal` is typically the right server name when SQL Server is running on your machine and `UpApi` is inside Docker
+- in `zsh`, wrap connection strings in single quotes when the password contains `!`
+- this example configures only one service, `api`
+- the default local URL is [http://localhost:5092](http://localhost:5092)
+
+Useful built-in routes:
+
+- `/`
+- `/ping`
+- `/docs`
+- `/docs/api`
+- `/swagger.json`
+- `/swa/api/swagger.json`
+
+### 2. Configure a service
+
+For containers, the recommended approach is environment variables. If you run from source, you can also use [`src/UpApi/appsettings.json`](/Users/ole/UpText/Repos/UpApi/src/UpApi/appsettings.json).
+
+Minimal configuration example:
 
 ```json
 {
@@ -183,7 +216,7 @@ Typical uses:
 
 If logging is enabled, every executed endpoint writes a row to the configured log table.
 
-### 2. Create the SQL service user
+### 3. Create the SQL service user
 
 `UpApi` only needs permission to connect to the database and execute stored procedures in the configured schema. Using a dedicated service login instead of `sa` keeps local setup closer to production and limits the blast radius if the API credentials are exposed.
 
@@ -200,7 +233,7 @@ GRANT INSERT ON [api].[log] TO upservice;
 
 This matches the example connection string above and gives `UpApi` access to execute procedures in the `api` schema and write to `api.log` without broader database permissions.
 
-### 3. Create stored procedures
+### 4. Create stored procedures
 
 Create your procedures in SQL Server under the configured schema, for example:
 
@@ -209,50 +242,6 @@ Create your procedures in SQL Server under the configured schema, for example:
 - `api.customers_put`
 - `api.customers_delete`
 - `api.customers_openapi` optional, for richer docs
-
-### 4. Run from source
-
-```bash
-dotnet run --project /Users/ole/UpText/Repos/UpApi/src/UpApi/UpApi.csproj
-```
-
-Default local development URL from launch settings:
-
-- `http://localhost:5092`
-
-Useful built-in routes:
-
-- `/`
-- `/ping`
-- `/docs`
-- `/docs/api`
-- `/swagger.json`
-- `/swa/api/swagger.json`
-
-### 5. Run as a container
-
-Build manually:
-
-```bash
-docker build -f /Users/ole/UpText/Repos/UpApi/src/UpApi/Dockerfile -t upapi /Users/ole/UpText/Repos/UpApi/src
-```
-
-Run:
-
-```bash
-docker run --rm \
-  -p 8080:8080 \
-  -e ASPNETCORE_URLS=http://+:8080 \
-  -e JWT_SECRET=replace-with-a-long-random-secret \
-  -e JWT_ISSUER=UpApi \
-  -e JWT_AUDIENCE=UpApiClient \
-  -e JWT_HOURS=8 \
-  -e Cors__AllowedOrigins__0=https://app.example.com \
-  -e Cors__AllowedOrigins__1=https://admin.example.com \
-  -e Services__api__SqlSchema=api \
-  -e Services__api__SqlConnectionString="Server=host.docker.internal,1433;Initial Catalog=MyDb;User ID=upservice;Password=VerySecret!321;Encrypt=False;TrustServerCertificate=True;" \
-  upapi
-```
 
 ## REST Route Convention
 
@@ -829,6 +818,28 @@ then `UpApi` returns that as a binary HTTP response.
 - This project targets `net10.0`
 - It is designed for SQL Server
 - The default `appsettings.json` in the repo should be treated as local/dev configuration, not production secrets
+
+## Run From Source
+
+Most users should run `UpApi` from Docker Hub. Running from source is mainly useful when you are developing or debugging the project itself.
+
+Run directly with the .NET SDK:
+
+```bash
+dotnet run --project /Users/ole/UpText/Repos/UpApi/src/UpApi/UpApi.csproj
+```
+
+Build the container locally instead of pulling `uptext/upapi`:
+
+```bash
+docker build -f /Users/ole/UpText/Repos/UpApi/src/UpApi/Dockerfile -t upapi /Users/ole/UpText/Repos/UpApi/src
+```
+
+Configuration can come from:
+
+- environment variables
+- [`src/UpApi/appsettings.json`](/Users/ole/UpText/Repos/UpApi/src/UpApi/appsettings.json)
+- [`src/UpApi/appsettings.Development.json`](/Users/ole/UpText/Repos/UpApi/src/UpApi/appsettings.Development.json)
 
 ## Next Things To Add
 

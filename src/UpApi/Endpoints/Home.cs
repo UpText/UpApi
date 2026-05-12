@@ -6,9 +6,12 @@ namespace UpApi.Endpoints;
 
 public static class Home
 {
-    private const string AccentColor = "#f5b301";
-    private const string AccentColorSoft = "#ffd34d";
-    private const string InkColor = "#0d1117";
+    private const string BrandPrimary = "#082f49";
+    private const string BrandCyan = "#67e8f9";
+    private const string BrandAmber = "#f59e0b";
+    private const string BrandInk = "#0f172a";
+    private const string BrandMuted = "#475569";
+    private const string BrandTeal = "#0f766e";
 
     public static IEndpointRouteBuilder MapHome(this IEndpointRouteBuilder app)
     {
@@ -28,7 +31,6 @@ public static class Home
                 swaggerServices.Select(service =>
                     $"      <a class=\"service-link\" href=\"/docs/{Uri.EscapeDataString(service)}\">Swagger UI for {WebUtility.HtmlEncode(service)}</a>"))
             : "      <div class=\"service-link empty-state\">No Swagger services configured yet.</div>";
-        var logos = RenderLogos();
 
         return string.Join(
             "\n",
@@ -37,32 +39,38 @@ public static class Home
             "<head>",
             "  <meta charset=\"utf-8\" />",
             "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />",
+            "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />",
+            "  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />",
+            "  <link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap\" rel=\"stylesheet\" />",
+            $"  <link rel=\"icon\" href=\"data:image/svg+xml,{Uri.EscapeDataString(RenderFaviconSvg())}\" />",
             "  <title>UpText API</title>",
             "  <style>",
             "    :root { color-scheme: light; }",
             "    * { box-sizing: border-box; }",
-            "    body { margin: 0; font-family: system-ui, sans-serif; background: radial-gradient(circle at top left, #fff7d8 0, #f7efe2 38%, #f2ebe2 100%); color: #111827; }",
+            $"    body {{ margin: 0; font-family: 'IBM Plex Sans', sans-serif; color: {BrandInk}; background-image: radial-gradient(circle at top left, rgba(103, 232, 249, 0.22), transparent 30%), radial-gradient(circle at right 20%, rgba(245, 158, 11, 0.14), transparent 25%), linear-gradient(180deg, #f8fbfd 0%, #f5f7fb 100%); }}",
             "    .shell { min-height: 100vh; padding: 32px; }",
-            "    .card { max-width: 980px; margin: 0 auto; padding: 32px; border: 1px solid #e5dac7; border-radius: 28px; background: rgba(255,255,255,0.86); box-shadow: 0 22px 60px rgba(28, 22, 10, 0.12); backdrop-filter: blur(8px); }",
+            "    .card { max-width: 1040px; margin: 0 auto; padding: 32px; border: 1px solid rgba(219, 228, 238, 0.9); border-radius: 32px; background: rgba(255,255,255,0.82); box-shadow: 0 20px 60px -35px rgba(15,23,42,0.45); backdrop-filter: blur(18px); }",
             "    .hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); gap: 28px; align-items: center; }",
-            "    .eyebrow { display: inline-block; padding: 8px 12px; border-radius: 999px; background: #fff5cc; color: #8a5a00; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }",
-            "    h1 { margin: 18px 0 12px; font-size: clamp(42px, 7vw, 72px); line-height: 0.95; letter-spacing: -0.05em; }",
-            "    .lede { margin: 0; max-width: 36rem; font-size: 18px; line-height: 1.6; color: #5f5a52; }",
-            "    .logo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }",
-            "    .logo-card { padding: 16px; border-radius: 22px; background: linear-gradient(180deg, #171c25 0%, #10151d 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }",
-            "    .logo-card.light { background: linear-gradient(180deg, #fff8dd 0%, #ffe7a6 100%); }",
-            "    .logo-card.wide { grid-column: 1 / -1; }",
-            "    .logo-label { display: block; margin-top: 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #f7d56f; }",
-            "    .logo-card.light .logo-label { color: #7d5400; }",
-            "    .section-title { margin: 36px 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a847a; }",
+            $"    .eyebrow {{ display: inline-block; padding: 8px 12px; border-radius: 999px; background: #ecfeff; color: {BrandTeal}; font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }}",
+            $"    h1 {{ margin: 18px 0 12px; font-family: 'Space Grotesk', sans-serif; font-size: clamp(42px, 7vw, 72px); line-height: 0.95; letter-spacing: -0.05em; color: {BrandInk}; }}",
+            $"    .lede {{ margin: 0; max-width: 36rem; font-size: 18px; line-height: 1.7; color: {BrandMuted}; }}",
+            "    .brand-panel { position: relative; overflow: hidden; padding: 24px; border-radius: 28px; background: linear-gradient(160deg, #082f49 0%, #0b3f61 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); min-height: 100%; }",
+            "    .brand-panel::before { content: ''; position: absolute; inset: -10% auto auto -12%; width: 190px; height: 190px; border-radius: 999px; background: rgba(103, 232, 249, 0.18); filter: blur(6px); }",
+            "    .brand-panel::after { content: ''; position: absolute; right: -40px; bottom: -48px; width: 180px; height: 180px; border-radius: 999px; background: rgba(245, 158, 11, 0.18); filter: blur(2px); }",
+            "    .brand-lockup { position: relative; z-index: 1; display: flex; gap: 18px; align-items: center; }",
+            "    .brand-copy { position: relative; z-index: 1; margin-top: 22px; }",
+            "    .brand-name { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: clamp(28px, 4vw, 42px); font-weight: 700; line-height: 1; letter-spacing: -0.04em; color: #f8fafc; }",
+            "    .brand-tag { margin: 6px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(248,250,252,0.72); }",
+            "    .brand-note { margin: 18px 0 0; font-size: 15px; line-height: 1.65; color: rgba(248,250,252,0.86); }",
+            $"    .section-title {{ margin: 36px 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: {BrandTeal}; }}",
             "    .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }",
-            "    .service-link, .utility-link { display: block; padding: 14px 16px; border-radius: 16px; text-decoration: none; color: #161616; background: #fffdfa; border: 1px solid #e8dcc9; transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease; }",
-            "    .service-link:hover, .utility-link:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(30, 24, 13, 0.08); border-color: #d7ba54; }",
-            "    .empty-state { color: #70685d; }",
-            "    .empty-state:hover { transform: none; box-shadow: none; border-color: #e8dcc9; }",
+            "    .service-link, .utility-link { display: block; padding: 14px 16px; border-radius: 16px; text-decoration: none; color: #0f172a; background: rgba(255,255,255,0.92); border: 1px solid #dbe4ee; transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease; }",
+            "    .service-link:hover, .utility-link:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(15,23,42,0.08); border-color: rgba(8,47,73,0.28); }",
+            $"    .empty-state {{ color: {BrandMuted}; }}",
+            "    .empty-state:hover { transform: none; box-shadow: none; border-color: #dbe4ee; }",
             "    .utility-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }",
             "    .utility-link { width: fit-content; min-width: 140px; }",
-            "    @media (max-width: 820px) { .shell { padding: 18px; } .card { padding: 22px; border-radius: 22px; } .hero { grid-template-columns: 1fr; } }",
+            "    @media (max-width: 820px) { .shell { padding: 18px; } .card { padding: 22px; border-radius: 24px; } .hero { grid-template-columns: 1fr; } .brand-lockup { align-items: flex-start; } }",
             "  </style>",
             "</head>",
             "<body>",
@@ -72,9 +80,9 @@ public static class Home
             "        <div>",
             "          <span class=\"eyebrow\">UpText Platform</span>",
             "          <h1>UpText API</h1>",
-            "          <p class=\"lede\">SQL-backed endpoints, Swagger surfaces, and internal service docs with branding that matches the rest of UpText.</p>",
+            "          <p class=\"lede\">SQL-backed endpoints, Swagger docs, JWT authentication.</p>",
             "        </div>",
-            logos,
+            $"        {RenderBrandPanel()}",
             "      </section>",
             "      <div class=\"section-title\">Swagger Services</div>",
             $"      <div class=\"links\">{swaggerLinks}</div>",
@@ -89,62 +97,42 @@ public static class Home
             "</html>");
     }
 
-    private static string RenderLogos()
+    private static string RenderBrandPanel()
     {
         return $$"""
-        <div class="logo-grid" aria-label="UpText logo studies">
-          <div class="logo-card wide">
-            {{RenderWordmarkLogo()}}
-            <span class="logo-label">Wordmark lockup</span>
+        <div class="brand-panel" aria-label="UpText brand panel">
+          <div class="brand-lockup">
+            {{RenderBrandIcon()}}
+            <div>
+              <p class="brand-name">UpText</p>
+              <p class="brand-tag">SQL tools</p>
+            </div>
           </div>
-          <div class="logo-card">
-            {{RenderMarkLogo(AccentColor, InkColor)}}
-            <span class="logo-label">App mark</span>
-          </div>
-          <div class="logo-card light">
-            {{RenderOutlinedLogo()}}
-            <span class="logo-label">Signal mark</span>
+          <div class="brand-copy">
+            <p class="brand-note">Open-source web tools for SQL developers and DBAs</p>
           </div>
         </div>
         """;
     }
 
-    private static string RenderWordmarkLogo()
+    private static string RenderBrandIcon()
     {
         return $$"""
-        <svg viewBox="0 0 440 120" role="img" aria-label="UpText wordmark" width="100%" height="auto">
-          <rect x="0" y="0" width="440" height="120" rx="24" fill="transparent" />
-          <g transform="translate(18 18)">
-            <rect x="0" y="0" width="34" height="34" rx="9" fill="{{AccentColor}}" />
-            <rect x="46" y="0" width="34" height="22" rx="8" fill="#ffffff" />
-            <rect x="0" y="46" width="28" height="28" rx="8" fill="#ffffff" />
-            <rect x="40" y="40" width="40" height="40" rx="10" fill="{{AccentColorSoft}}" />
-          </g>
-          <text x="120" y="72" fill="#ffffff" font-size="46" font-weight="800" letter-spacing="-2">UpText</text>
+        <svg viewBox="0 0 48 48" role="img" aria-label="UpText icon" width="72" height="72">
+          <rect x="3" y="3" width="42" height="42" rx="16" fill="{{BrandPrimary}}" />
+          <path d="M14 29.5L24 12l10 17.5h-6L24 22l-4 7.5h-6Z" fill="{{BrandCyan}}" />
+          <path d="M21.5 31h5v5h-5z" fill="{{BrandAmber}}" />
         </svg>
         """;
     }
 
-    private static string RenderMarkLogo(string primaryFill, string secondaryFill)
+    private static string RenderFaviconSvg()
     {
         return $$"""
-        <svg viewBox="0 0 160 160" role="img" aria-label="UpText mark" width="100%" height="auto">
-          <rect x="24" y="24" width="46" height="46" rx="12" fill="{{primaryFill}}" />
-          <rect x="90" y="24" width="46" height="30" rx="10" fill="#ffffff" />
-          <rect x="24" y="90" width="38" height="38" rx="11" fill="#ffffff" />
-          <rect x="82" y="82" width="54" height="54" rx="14" fill="{{secondaryFill}}" />
-        </svg>
-        """;
-    }
-
-    private static string RenderOutlinedLogo()
-    {
-        return $$"""
-        <svg viewBox="0 0 160 160" role="img" aria-label="UpText outline mark" width="100%" height="auto">
-          <rect x="24" y="24" width="46" height="46" rx="12" fill="none" stroke="{{InkColor}}" stroke-width="8" />
-          <rect x="90" y="24" width="46" height="30" rx="10" fill="{{AccentColor}}" />
-          <rect x="24" y="90" width="38" height="38" rx="11" fill="{{AccentColorSoft}}" />
-          <rect x="82" y="82" width="54" height="54" rx="14" fill="none" stroke="{{InkColor}}" stroke-width="8" />
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+          <rect x="3" y="3" width="42" height="42" rx="16" fill="{{BrandPrimary}}" />
+          <path d="M14 29.5L24 12l10 17.5h-6L24 22l-4 7.5h-6Z" fill="{{BrandCyan}}" />
+          <path d="M21.5 31h5v5h-5z" fill="{{BrandAmber}}" />
         </svg>
         """;
     }
